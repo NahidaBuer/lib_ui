@@ -410,6 +410,12 @@ void PopupMenu::popupSubmenu(
 				geometry().topLeft() + p,
 				this,
 				_menu->itemForAction(action))) {
+			_activeSubmenu->animatePhaseValue(
+			) | rpl::filter([](AnimatePhase phase) {
+				return (phase == AnimatePhase::Shown);
+			}) | rpl::take(1) | rpl::on_next([submenu = _activeSubmenu] {
+				submenu->menu()->clearSelection();
+			}, _activeSubmenu->lifetime());
 			_activeSubmenu->showPrepared(source);
 			_menu->setChildShownAction(action);
 		} else {
