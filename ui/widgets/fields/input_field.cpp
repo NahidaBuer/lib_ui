@@ -2308,7 +2308,9 @@ void InputField::insertTag(const QString &text, QString tagId) {
 				if ((i == position - fragmentPosition
 					|| (previous == '/'
 						? fragmentText[i].isLetterOrNumber()
-						: fragmentText[i].isLetter())
+						: (previous == '@'
+							? fragmentText[i].isLetterOrNumber()
+							: fragmentText[i].isLetter()))
 					|| previous == '#') &&
 					(i < 2 || !(fragmentText[i - 2].isLetterOrNumber()
 						|| fragmentText[i - 2] == '_'))) {
@@ -2327,7 +2329,7 @@ void InputField::insertTag(const QString &text, QString tagId) {
 					cursor.setPosition(till, QTextCursor::KeepAnchor);
 					break;
 				} else if ((i == position - fragmentPosition
-					|| fragmentText[i].isLetter())
+					|| fragmentText[i].isLetterOrNumber())
 					&& fragmentText[i - 1] == '@'
 					&& (i > 2)
 					&& (fragmentText[i - 2].isLetterOrNumber()
