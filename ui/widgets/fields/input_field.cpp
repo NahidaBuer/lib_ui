@@ -2575,7 +2575,9 @@ void InputField::insertTag(const QString &text, QString tagId) {
 				if ((i == position - fragmentPosition
 					|| (previous == '/' || previous == '@'
 						? fragmentText[i].isLetterOrNumber()
-						: fragmentText[i].isLetter())
+						: (previous == '@'
+							? fragmentText[i].isLetterOrNumber()
+							: fragmentText[i].isLetter()))
 					|| previous == '#') &&
 					(i < 2 || !(fragmentText[i - 2].isLetterOrNumber()
 						|| fragmentText[i - 2] == '_'))) {
