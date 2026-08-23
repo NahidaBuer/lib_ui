@@ -42,8 +42,8 @@ public:
 	[[nodiscard]] not_null<Menu::Menu*> menu() const {
 		return _menu;
 	}
-	[[nodiscard]] const style::DropdownMenu &st() const {
-		return _st;
+	[[nodiscard]] const style::InnerDropdown &st() const {
+		return _st.wrap;
 	}
 
 	~DropdownMenu();
