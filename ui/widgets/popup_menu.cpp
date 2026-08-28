@@ -143,7 +143,8 @@ void PopupMenu::init() {
 
 not_null<PopupMenu*> PopupMenu::ensureSubmenu(
 		not_null<QAction*> action,
-		const style::PopupMenu &st) {
+		const style::PopupMenu &st,
+		bool triggerFromParent) {
 	const auto &list = actions();
 	const auto found = ranges::find(list, action) != end(list);
 	if (!found && _stashedContent) {
@@ -151,6 +152,10 @@ not_null<PopupMenu*> PopupMenu::ensureSubmenu(
 		Assert(ranges::find(stashedList, action) != end(stashedList));
 	} else {
 		Assert(found);
+	}
+	if (triggerFromParent
+		&& !ranges::contains(_triggeredSubmenuParents, action)) {
+		_triggeredSubmenuParents.push_back(action);
 	}
 
 	const auto j = _submenus.find(action);
@@ -166,6 +171,12 @@ not_null<PopupMenu*> PopupMenu::ensureSubmenu(
 }
 
 void PopupMenu::removeSubmenu(not_null<QAction*> action) {
+	_triggeredSubmenuParents.erase(
+		std::remove(
+			begin(_triggeredSubmenuParents),
+			end(_triggeredSubmenuParents),
+			action),
+		end(_triggeredSubmenuParents));
 	const auto menu = _submenus.take(action);
 	if (menu && menu->get() == _activeSubmenu) {
 		base::take(_activeSubmenu)->hideMenu(true);
@@ -314,7 +325,14 @@ not_null<QAction*> PopupMenu::insertAction(
 }
 
 void PopupMenu::removeAction(int position) {
-	const auto i = _submenus.find(_menu->actions()[position]);
+	const auto action = _menu->actions()[position];
+	_triggeredSubmenuParents.erase(
+		std::remove(
+			begin(_triggeredSubmenuParents),
+			end(_triggeredSubmenuParents),
+			action),
+		end(_triggeredSubmenuParents));
+	const auto i = _submenus.find(action);
 	if (i != end(_submenus)) {
 		_submenus.erase(i);
 	}
@@ -322,6 +340,7 @@ void PopupMenu::removeAction(int position) {
 }
 
 void PopupMenu::clearActions() {
+	_triggeredSubmenuParents.clear();
 	_submenus.clear();
 	return _menu->clearActions();
 }
@@ -499,7 +518,9 @@ void PopupMenu::clearSubmenuAim() {
 }
 
 void PopupMenu::handleTriggered(const Menu::CallbackData &data) {
-	if (!popupSubmenuFromAction(data)) {
+	const auto triggerFromParent = data.action
+		&& ranges::contains(_triggeredSubmenuParents, data.action);
+	if (triggerFromParent || !popupSubmenuFromAction(data)) {
 		_triggering = true;
 		if (!data.preventClose) {
 			hideMenu();
@@ -597,7 +618,17 @@ bool PopupMenu::handleKeyPress(int key) {
 		}
 	} else if (key == (style::RightToLeft() ? Qt::Key_Left : Qt::Key_Right)) {
 		if (const auto item = _menu->findSelectedAction()) {
-			if (_submenus.contains(item->action())) {
+			const auto action = item->action();
+			const auto i = _submenus.find(action);
+			if (i != end(_submenus)
+				&& ranges::contains(_triggeredSubmenuParents, action)) {
+				popupSubmenu(
+					action,
+					i->second.get(),
+					item->y(),
+					TriggeredSource::Keyboard);
+				return true;
+			} else if (i != end(_submenus)) {
 				item->setClicked(Menu::TriggeredSource::Keyboard);
 			}
 		}
