@@ -52,6 +52,10 @@ constexpr auto kSubmenuAimDelay = crl::time(300);
 	return !negative || !positive;
 }
 
+[[nodiscard]] QWidget *SubmenuParent(not_null<PopupMenu*> menu) {
+	return ::Platform::IsWayland() ? menu.get() : menu->parentWidget();
+}
+
 } // namespace
 
 struct PopupMenu::SubmenuAim {
@@ -95,7 +99,10 @@ PopupMenu::PopupMenu(QWidget *parent, QMenu *menu, const style::PopupMenu &st)
 		if (const auto submenu = action->menu()) {
 			_submenus.emplace(
 				action,
-				base::make_unique_q<PopupMenu>(this, submenu, st)
+				base::make_unique_q<PopupMenu>(
+					SubmenuParent(this),
+					submenu,
+					st)
 			).first->second->deleteOnHide(false);
 		}
 	}
@@ -152,7 +159,7 @@ not_null<PopupMenu*> PopupMenu::ensureSubmenu(
 	}
 	const auto result = _submenus.emplace(
 		action,
-		base::make_unique_q<PopupMenu>(this, st)
+		base::make_unique_q<PopupMenu>(SubmenuParent(this), st)
 	).first->second.get();
 	result->deleteOnHide(false);
 	return result;
@@ -284,14 +291,14 @@ not_null<QAction*> PopupMenu::addAction(
 		action,
 		base::unique_qptr<PopupMenu>(submenu.release())
 	).first->second.get();
-	// Reparent under the menu itself (like ensureSubmenu and the QMenu
-	// constructor do), so the submenu window gets this menu's window as
-	// its transient parent, but keep the window flags: the single-argument
-	// QWidget::setParent() resets them, which strips the Qt::Popup type set
+	// Reparent under the platform-specific submenu owner (like ensureSubmenu
+	// and the QMenu constructor do), but keep the window flags: the
+	// single-argument QWidget::setParent() resets them, which strips the
+	// Qt::Popup type set
 	// in init() and demotes the submenu to a plain child widget. Such a widget
 	// has no windowHandle() after createWinId(), so prepareGeometryFor() can't
 	// show it.
-	saved->setParent(this, saved->windowFlags());
+	saved->setParent(SubmenuParent(this), saved->windowFlags());
 	saved->deleteOnHide(false);
 	return action;
 }
