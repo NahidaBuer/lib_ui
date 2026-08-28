@@ -519,7 +519,9 @@ void PopupMenu::clearSubmenuAim() {
 
 void PopupMenu::handleTriggered(const Menu::CallbackData &data) {
 	const auto triggerFromParent = data.action
-		&& ranges::contains(_triggeredSubmenuParents, data.action);
+		&& ranges::contains(
+			_triggeredSubmenuParents,
+			not_null<QAction*>(data.action));
 	if (triggerFromParent || !popupSubmenuFromAction(data)) {
 		_triggering = true;
 		if (!data.preventClose) {
